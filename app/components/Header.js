@@ -1,10 +1,26 @@
-import { ethers } from "ethers"
+import { ethers } from "ethers";
 
 function Header({ account, setAccount }) {
+  const connectWallet = async () => {
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    const account = ethers.getAddress(accounts[0]);
+    setAccount(account);
+  };
 
   return (
     <header>
-
+      <p className="brand">fun.pump</p>
+      {account ? (
+        <button className="btn--fancy">
+          [{account.slice(0, 6) + "..." + account.slice(38, 42)}]
+        </button>
+      ) : (
+        <button onClick={connectWallet} className="btn--fancy">
+          Connect
+        </button>
+      )}
     </header>
   );
 }
