@@ -6,6 +6,7 @@ import {Token} from "./Token.sol";
 contract Factory {
     address public owner; //developer of factory
     uint256 public immutable fee;
+    uint256 private totalFeesCollected;
     uint256 public constant TOKEN_LIMIT = 500_000 ether;
     uint256 public constant TARGET = 3 ether;
 
@@ -26,6 +27,11 @@ contract Factory {
     event TokenCreated(address indexed creator, address indexed token, string name, string symbol, uint256 totalSupply);
     event Buy(address indexed token, uint256 amount);
 
+    modifier onlyOwner(){
+        require(msg.sender == owner, "Factory: Only owner can perform this action");
+        _;
+    }
+
     constructor(uint256 _fee){
         fee = _fee;
         owner = msg.sender;
@@ -34,6 +40,7 @@ contract Factory {
     function create(string memory _name, string memory _symbol) external payable {
         //make sure fee is correct
         require(msg.value >= fee, "Factory: Creator fee not met");
+        totalFeesCollected += msg.value;
 
         //  create a new token
         Token token = new Token(msg.sender, _name, _symbol, 1_000_000 ether);
@@ -102,6 +109,36 @@ contract Factory {
         Token(_token).transfer(msg.sender, _amount);
 
         emit Buy(_token, _amount);
+
+    }
+
+    function deposit(address _token) external{
+        // The remaining token balance and the ETH raised
+        // would go into a liquidity pool like Uniswap V3.
+        // For simplicity we'll just transfer remaining
+        // tokens and ETH raised to the creator.
+
+        Token token = Token(_token);
+        TokenSale memory sale = tokenToSale[_token];
+
+        require(sale.isOpen == false, "Factory: Target not reached");
+        //transfer rem token from factory to creator
+        token.transfer(sale.creator, token.balanceOf(address(this)));  
+
+        //transfer ETH raised
+        (bool success,) = payable(sale.creator).call{value : sale.raised}("");
+        require(success, "Factory: ETH transfer failed");
+
+    }
+
+    function withdrawFee(uint256 _amount) external onlyOwner{
+
+        //check amount requested is less than or equal to fee
+        require(_amount <= totalFeesCollected, "Factory: Amount exceeds fee");
+        totalFeesCollected -= _amount;
+
+        (bool success, ) = payable(owner).call{value : _amount}("");
+        require(success, "Factory: Fee transfer failed");
 
     }
 }
