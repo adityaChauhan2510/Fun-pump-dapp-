@@ -4,11 +4,10 @@ pragma solidity ^0.8.28;
 import {Token} from "./Token.sol";
 
 contract Factory {
-    address public owner; //developer of factory
+    address public owner; //developer of factory contract
     uint256 public immutable fee;
     uint256 private totalFeesCollected;
-    uint256 public constant TOKEN_LIMIT = 500_000 ether;
-    uint256 public constant TARGET = 3 ether;
+    
 
     address[] public tokens;
     uint256 public totalTokens;
@@ -20,12 +19,19 @@ contract Factory {
         uint256 sold;
         uint256 raised;
         bool isOpen;
+        bool amountWithdrawn;
+        uint256 tokenLimit;
+        uint256 targetRaise;
+        string metadataURI;
     }
     mapping(address => TokenSale) public tokenToSale;
 
 
     event TokenCreated(address indexed creator, address indexed token, string name, string symbol, uint256 totalSupply);
-    event Buy(address indexed token, uint256 amount);
+    event Buy(address indexed token, address indexed buyer, uint256 amount, uint256 price);
+    event Deposited(address indexed token, uint256 ethAmount, uint256 tokenAmount);
+    event FeeWithdrawn(address indexed owner, uint256 amount);
+
 
     modifier onlyOwner(){
         require(msg.sender == owner, "Factory: Only owner can perform this action");
@@ -37,17 +43,20 @@ contract Factory {
         owner = msg.sender;
     }
 
-    function create(string memory _name, string memory _symbol) external payable {
+    function create(string memory _name, string memory _symbol, uint256 _totalSupply, uint256 _targetRaise, string memory _metadata) external payable {
         //make sure fee is correct
         require(msg.value >= fee, "Factory: Creator fee not met");
+        require(_totalSupply > 0, "Factory: Invalid total supply");
+        require(_targetRaise > 0, "Factory: Invalid raise target");
+
         totalFeesCollected += msg.value;
 
         //  create a new token
-        Token token = new Token(msg.sender, _name, _symbol, 1_000_000 ether);
+        Token token = new Token(msg.sender, _name, _symbol, _totalSupply);
 
         // save the token for later use
         tokens.push(address(token));
-        totalTokens += 1;
+        totalTokens++;
 
         // list the token for sale
         TokenSale memory sale = TokenSale({
@@ -56,14 +65,17 @@ contract Factory {
             creator: msg.sender,
             sold: 0,
             raised: 0,
-            isOpen: true
+            isOpen: true,
+            amountWithdrawn : false,
+            tokenLimit : _totalSupply / 2,
+            targetRaise : _targetRaise,
+            metadataURI : _metadata
         });
 
         tokenToSale[address(token)] = sale;
 
-        
         // tell people it's live(events)
-        emit TokenCreated(msg.sender, address(token), _name, _symbol, 100 ether);
+        emit TokenCreated(msg.sender, address(token), _name, _symbol, _totalSupply);
 
         
     }
@@ -75,7 +87,7 @@ contract Factory {
     function getCost(uint256 _sold) public pure returns (uint256){
         uint256 floor = 0.0001 ether;
         uint256 step = 0.0001 ether;
-        uint256 increment = 10000 ether;
+        uint256 increment = 10 ether;
 
         uint256 cost = (step * (_sold / increment)) + floor;
         return cost;
@@ -84,14 +96,14 @@ contract Factory {
 
     function buyToken(address _token, uint256 _amount) external payable{
         TokenSale storage sale = tokenToSale[_token];
+
         //check conditions
         require(sale.isOpen == true, "Factory: Token sale is closed");
-        require(_amount >= 1 ether, "Factory: Amount too low");
-        require(_amount <= 10000 ether, "Factory: Amount exceeded");
+        require(_amount <= sale.tokenLimit, "Factory: Token amount exceeded");
 
         //check calculations
-        uint256 cost = getCost(sale.sold);  //cost of 1 token based on bought
-        uint256 price = cost * (_amount / 10 ** 18);
+        uint256 costPerToken = getCost(sale.sold);  
+        uint256 price = costPerToken * (_amount / 1 ether);
 
         //make sure enough eth is sent
         require(msg.value >= price, "Factory: Insuffiecient ETH received");
@@ -102,13 +114,13 @@ contract Factory {
         sale.sold += _amount;
 
         //make sure fund raising goal is met
-         if (sale.sold >= TOKEN_LIMIT || sale.raised >= TARGET) {
+         if (sale.sold >= sale.tokenLimit || sale.raised >= sale.targetRaise) {
             sale.isOpen = false;
         }
 
         Token(_token).transfer(msg.sender, _amount);
 
-        emit Buy(_token, _amount);
+        emit Buy(_token, msg.sender, _amount, price);
 
     }
 
@@ -118,16 +130,24 @@ contract Factory {
         // For simplicity we'll just transfer remaining
         // tokens and ETH raised to the creator.
 
-        Token token = Token(_token);
-        TokenSale memory sale = tokenToSale[_token];
+        
+        TokenSale storage sale = tokenToSale[_token];
 
+        require(msg.sender == sale.creator, "Factory: Not token creator");
         require(sale.isOpen == false, "Factory: Target not reached");
-        //transfer rem token from factory to creator
-        token.transfer(sale.creator, token.balanceOf(address(this)));  
+        require(sale.amountWithdrawn == false, "Factory: Already withdrawn");
+        require(sale.raised > 0, "Factory: Nothing to deposit");
 
-        //transfer ETH raised
-        (bool success,) = payable(sale.creator).call{value : sale.raised}("");
+        //transfer rem token and ETH from factory to creator
+        uint256 tokenAmount = Token(_token).balanceOf(address(this));
+        uint256 ethAmount = sale.raised;
+
+        Token(_token).transfer(sale.creator, tokenAmount);  
+        (bool success,) = payable(sale.creator).call{value : ethAmount}("");
         require(success, "Factory: ETH transfer failed");
+
+        sale.amountWithdrawn = true;
+        emit Deposited(_token, ethAmount, tokenAmount);
 
     }
 
@@ -139,6 +159,8 @@ contract Factory {
 
         (bool success, ) = payable(owner).call{value : _amount}("");
         require(success, "Factory: Fee transfer failed");
+
+        emit FeeWithdrawn(owner, _amount);
 
     }
 }

@@ -12,7 +12,6 @@ import Trade from "./components/Trade";
 // ABIs & Config
 import Factory from "./abis/Factory.json";
 import config from "./config.json";
-import images from "./images.json";
 
 import { Toaster } from "react-hot-toast";
 
@@ -33,6 +32,10 @@ export default function Page() {
   const toggleTrade = (token) => {
     setToken(token);
     showTrade ? setShowTrade(false) : setShowTrade(true);
+  };
+
+  const handleActionComplete = async () => {
+    await loadBlockchainData();
   };
 
   const loadBlockchainData = async () => {
@@ -64,12 +67,15 @@ export default function Page() {
         sold: tokenSale.sold,
         raised: tokenSale.raised,
         isOpen: tokenSale.isOpen,
-        image: images[i],
+        amountWithdrawn: tokenSale.amountWithdrawn,
+        tokenLimit: tokenSale.tokenLimit,
+        targetRaise: tokenSale.targetRaise,
+        image: tokenSale.metadataURI,
       };
       tokens.push(token);
     }
 
-    setTokens(tokens.reverse());
+    setTokens([...tokens].reverse());
   };
 
   useEffect(() => {
@@ -113,6 +119,7 @@ export default function Page() {
             factory={factory}
             provider={provider}
             toggleCreate={toggleCreate}
+            handleActionComplete={handleActionComplete}
           />
         )}
 
@@ -122,10 +129,11 @@ export default function Page() {
             token={token}
             provider={provider}
             factory={factory}
+            handleActionComplete={handleActionComplete}
           />
         )}
       </div>
-      {/* <Toaster /> */}
+      <Toaster />
     </>
   );
 }

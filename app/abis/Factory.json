@@ -20,13 +20,69 @@
         "type": "address"
       },
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "Buy",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "ethAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Deposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
     ],
-    "name": "Buy",
+    "name": "FeeWithdrawn",
     "type": "event"
   },
   {
@@ -67,32 +123,6 @@
     "type": "event"
   },
   {
-    "inputs": [],
-    "name": "TARGET",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TOKEN_LIMIT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -120,6 +150,21 @@
       {
         "internalType": "string",
         "name": "_symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_totalSupply",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_targetRaise",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_metadata",
         "type": "string"
       }
     ],
@@ -214,6 +259,26 @@
             "internalType": "bool",
             "name": "isOpen",
             "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "amountWithdrawn",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "targetRaise",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "metadataURI",
+            "type": "string"
           }
         ],
         "internalType": "struct Factory.TokenSale",
@@ -276,6 +341,26 @@
         "internalType": "bool",
         "name": "isOpen",
         "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "amountWithdrawn",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "targetRaise",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "metadataURI",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
